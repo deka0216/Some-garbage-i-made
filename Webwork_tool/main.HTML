@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>算式轉程式碼</title>
+  <style>
+    :root {
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      --page: #e9edf0;
+      --fg: #1d252c;
+      --mut: #5d6b76;
+      --code: #ffffff;
+      --bd: #c7d0d6
+    }
+
+    html {
+      scroll-padding-top: env(safe-area-inset-top, 0px)
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root:not([data-theme="light"]) {
+        --page: #12171b;
+        --fg: #e6ebee;
+        --mut: #8f9ca6;
+        --code: #1b2228;
+        --bd: #2f3a43
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --page: #12171b;
+      --fg: #e6ebee;
+      --mut: #8f9ca6;
+      --code: #1b2228;
+      --bd: #2f3a43
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--fg);
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 16px
+    }
+
+    main {
+      width: 100%;
+      max-width: 480px
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 4px 2px 12px
+    }
+
+    .dev {
+      background: #2b3138;
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .25)
+    }
+
+    #ed {
+      background: #dfe6d2;
+      color: #1b2a1b;
+      border-radius: 10px;
+      padding: 14px 12px;
+      min-height: 120px;
+      font-size: 30px;
+      line-height: 1.2;
+      font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", "Times New Roman", serif;
+      overflow-x: auto;
+      display: flex;
+      align-items: center;
+      outline: none;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, .25)
+    }
+
+    #ed:focus-visible {
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, .25), 0 0 0 3px #ff9f1c
+    }
+
+    .r {
+      display: inline-flex;
+      align-items: center;
+      min-width: .5em;
+      min-height: 1.2em;
+      padding: 0 1px;
+      white-space: nowrap
+    }
+
+    .r.empty {
+      outline: 1.5px dashed rgba(27, 42, 27, .45);
+      outline-offset: -2px;
+      min-width: .7em
+    }
+
+    .n {
+      display: inline-block
+    }
+
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 3px
+    }
+
+    .frac>.r:first-child {
+      border-bottom: 1.5px solid currentColor
+    }
+
+    .sup {
+      font-size: .62em;
+      position: relative;
+      top: -.7em
+    }
+
+    .sqrt {
+      display: inline-flex;
+      align-items: stretch
+    }
+
+    .sqrt>.r {
+      border-top: 1.5px solid currentColor
+    }
+
+    .caret {
+      display: inline-block;
+      width: 2px;
+      height: 1.15em;
+      background: #c25b00;
+      margin: 0 -1px;
+      animation: bl 1s steps(1) infinite
+    }
+
+    @keyframes bl {
+      50% {
+        opacity: 0
+      }
+    }
+
+    @media (prefers-reduced-motion:reduce) {
+      .caret {
+        animation: none
+      }
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 7px;
+      margin-top: 12px
+    }
+
+    .keys button {
+      font: inherit;
+      font-size: 17px;
+      height: 46px;
+      border: 0;
+      border-radius: 9px;
+      background: #434c56;
+      color: #f2f5f7;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #1c2126
+    }
+
+    .keys button:active {
+      transform: translateY(2px);
+      box-shadow: none
+    }
+
+    .keys button:focus-visible {
+      outline: 2px solid #ff9f1c;
+      outline-offset: 2px
+    }
+
+    .keys .f {
+      background: #353d45;
+      font-size: 15px
+    }
+
+    .keys .o {
+      background: #5a6672
+    }
+
+    .keys .a {
+      background: #ff9f1c;
+      color: #1c1300
+    }
+
+    .out {
+      margin-top: 16px
+    }
+
+    .bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: var(--mut)
+    }
+
+    .bar select,
+    .bar button {
+      font: inherit;
+      font-size: 14px;
+      color: var(--fg);
+      background: var(--code);
+      border: 1px solid var(--bd);
+      border-radius: 7px;
+      padding: 6px 10px
+    }
+
+    .bar button {
+      cursor: pointer
+    }
+
+    .bar .sp {
+      flex: 1
+    }
+
+    #code {
+      background: var(--code);
+      border: 1px solid var(--bd);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 17px;
+      word-break: break-all;
+      min-height: 56px;
+      user-select: all
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--mut);
+      margin: 10px 2px 0;
+      line-height: 1.6
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>算式轉程式碼</h1>
+    <div class="dev">
+      <div id="ed" tabindex="0" aria-label="算式輸入區"></div>
+      <div class="keys" id="keys"></div>
+    </div>
+    <div class="out">
+      <div class="bar">
+        <label for="lang">輸出格式</label>
+        <select id="lang">
+          <option value="generic">通用（^ ( ) / *）</option>
+          <option value="python">Python</option>
+          <option value="js">JavaScript</option>
+        </select>
+        <span class="sp"></span>
+        <button id="ex">範例</button>
+        <button id="cp">複製</button>
+      </div>
+      <div id="code"></div>
+    </div>
+    <p class="hint">可直接用鍵盤輸入：<b>/</b> 會把前一個數字或變數變成分子，<b>^</b> 開啟次方，<b>(</b> 開括號，<b>)</b> 或 → 跳出括號。輸入 sin、cos、sqrt、pi
+      等會自動轉成函數。相鄰的項會自動補上 *。</p>
+  </main>
+  <script>
+    const OPS = ['+', '-', '*', ',', '='];
+    const LANG = {
+      generic: { pow: '^', f: n => n, pi: 'pi', e: 'e' },
+      python: { pow: '**', f: n => ({ ln: 'math.log', log: 'math.log10', abs: 'abs' }[n] || 'math.' + n), pi: 'math.pi', e: 'math.e' },
+      js: { pow: '**', f: n => ({ ln: 'Math.log', log: 'Math.log10' }[n] || 'Math.' + n), pi: 'Math.PI', e: 'Math.E' }
+    };
+    const FN = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sqrt', 'log', 'ln', 'exp', 'abs'];
+    const ed = document.getElementById('ed'), codeEl = document.getElementById('code'), sel = document.getElementById('lang');
+    let root = [], cur = { row: root, i: 0 };
+    const parent = new WeakMap();
+    const kids = n => n.t === 'f' ? [n.a, n.b] : (n.t === 'p' || n.t === 'g') ? [n.a] : [];
+    const isNum = n => n.t === 'c' && /^[0-9.]$/.test(n.v);
+    const isOperand = n => n.t !== 'p' && !(n.t === 'c' && OPS.includes(n.c));
+    const chars = s => [...s].map(v => ({ t: 'c', v, c: v }));
+
+    /* ---------- rendering ---------- */
+    function mk(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e }
+    function renderRow(row) {
+      const el = mk('span', 'r'); if (!row.length) el.classList.add('empty');
+      row.forEach((n, k) => { if (cur.row === row && cur.i === k) el.appendChild(mk('span', 'caret')); el.appendChild(renderNode(n, row)) });
+      if (cur.row === row && cur.i === row.length) el.appendChild(mk('span', 'caret'));
+      el.onclick = e => {
+        e.stopPropagation(); let i = 0;
+        [...el.children].filter(c => c.classList.contains('n')).forEach(c => { const r = c.getBoundingClientRect(); if (e.clientX > r.left + r.width / 2) i++ });
+        cur = { row, i }; render(); ed.focus()
+      };
+      return el
+    }
+    function renderNode(n, row) {
+      kids(n).forEach((r, idx) => parent.set(r, { row, node: n, idx }));
+      if (n.t === 'c') { return mk('span', 'n', n.v === '*' ? '×' : n.v === '-' ? '−' : n.v) }
+      if (n.t === 'f') { const e = mk('span', 'n frac'); e.append(renderRow(n.a), renderRow(n.b)); return e }
+      if (n.t === 'p') { const e = mk('span', 'n sup'); e.append(renderRow(n.a)); return e }
+      if (n.name === 'sqrt') { const e = mk('span', 'n sqrt'); e.append(mk('span', null, '√'), renderRow(n.a)); return e }
+      const e = mk('span', 'n'); if (n.name) e.append(mk('span', null, n.name));
+      e.append(mk('span', null, '('), renderRow(n.a), mk('span', null, ')')); return e
+    }
+    function render() { ed.replaceChildren(renderRow(root)); codeEl.textContent = root.length ? ser(root, LANG[sel.value]) : '（在上方輸入算式）' }
+
+    /* ---------- editing ---------- */
+    const ins = n => { cur.row.splice(cur.i, 0, n); cur.i++ };
+    const enter = (n, idx = 0) => { cur = { row: kids(n)[idx], i: 0 } };
+    function insG(name) { const n = { t: 'g', name, a: [] }; ins(n); enter(n) }
+    function insPow() { const n = { t: 'p', a: [] }; ins(n); enter(n) }
+    function insFrac() {
+      const r = cur.row; let k = cur.i; while (k > 0 && r[k - 1].t === 'p') k--;
+      let j = cur.i;
+      if (k > 0 && isOperand(r[k - 1])) { k--; if (isNum(r[k])) while (k > 0 && isNum(r[k - 1])) k--; j = k }
+      const num = r.splice(j, cur.i - j); cur.i = j;
+      const n = { t: 'f', a: num, b: [] }; ins(n); enter(n, num.length ? 1 : 0)
+    }
+    function letter(ch) {
+      ins({ t: 'c', v: ch, c: ch });
+      const r = cur.row; let s = '';
+      for (let k = cur.i - 1; k >= 0 && r[k].t === 'c' && /^[a-z]$/.test(r[k].v) && s.length < 5; k--)s = r[k].v + s;
+      const f = FN.filter(n => s.endsWith(n)).sort((a, b) => b.length - a.length)[0];
+      if (f) { r.splice(cur.i - f.length, f.length); cur.i -= f.length; insG(f) }
+      else if (s.endsWith('pi')) { r.splice(cur.i - 2, 2); cur.i -= 2; ins({ t: 'c', v: 'π', c: '#pi' }) }
+    }
+    function exitGroup() { const p = parent.get(cur.row); if (p && p.node.t === 'g') cur = { row: p.row, i: p.row.indexOf(p.node) + 1 } }
+    function right() {
+      const r = cur.row;
+      if (cur.i < r.length) { const ks = kids(r[cur.i]); if (ks.length) cur = { row: ks[0], i: 0 }; else cur.i++ }
+      else {
+        const p = parent.get(r); if (!p) return; const ks = kids(p.node);
+        if (p.idx < ks.length - 1) cur = { row: ks[p.idx + 1], i: 0 }; else cur = { row: p.row, i: p.row.indexOf(p.node) + 1 }
+      }
+    }
+    function left() {
+      const r = cur.row;
+      if (cur.i > 0) { const ks = kids(r[cur.i - 1]); if (ks.length) { const l = ks[ks.length - 1]; cur = { row: l, i: l.length } } else cur.i-- }
+      else {
+        const p = parent.get(r); if (!p) return;
+        if (p.idx > 0) { const l = kids(p.node)[p.idx - 1]; cur = { row: l, i: l.length } } else cur = { row: p.row, i: p.row.indexOf(p.node) }
+      }
+    }
+    function back() {
+      const r = cur.row;
+      if (cur.i > 0) {
+        const ks = kids(r[cur.i - 1]);
+        if (!ks.length || ks.every(k => !k.length)) { r.splice(cur.i - 1, 1); cur.i-- }
+        else { const l = ks[ks.length - 1]; cur = { row: l, i: l.length } }
+      }
+      else {
+        const p = parent.get(r); if (!p) return; const pr = p.row, pi = pr.indexOf(p.node);
+        if (kids(p.node).every(k => !k.length)) { pr.splice(pi, 1); cur = { row: pr, i: pi } }
+        else if (p.node.t === 'f' && p.idx === 1) { cur = { row: p.node.a, i: p.node.a.length } }
+        else cur = { row: pr, i: pi }
+      }
+    }
+    function clearAll() { root = []; cur = { row: root, i: 0 } }
+
+    /* ---------- serialize to linear code ---------- */
+    function wrap(s) {
+      if (/^[\w.?]+$/.test(s)) return s;
+      const rest = s.slice(s.match(/^[\w.]*/)[0].length);
+      if (rest[0] === '(') { let d = 0; for (let k = 0; k < rest.length; k++) { if (rest[k] === '(') d++; else if (rest[k] === ')' && --d === 0) { if (k === rest.length - 1) return s; break } } }
+      return '(' + s + ')'
+    }
+    function ser(row, o) {
+      const it = [], sr = r => ser(r, o) || '?';
+      row.forEach(n => {
+        const l = it[it.length - 1];
+        if (n.t === 'c') {
+          if (/^[0-9.]$/.test(n.v)) { if (l && l.k === 'num') l.s += n.v; else it.push({ k: 'num', s: n.v }) }
+          else if (OPS.includes(n.c)) it.push({ k: 'op', s: n.c });
+          else it.push({ k: 'var', s: n.c === '#pi' ? o.pi : n.c === '#e' ? o.e : n.c });
+        } else if (n.t === 'f') {
+          const s = wrap(sr(n.a)) + '/' + wrap(sr(n.b));
+          if (row.length === 1) it.push({ k: 't', s }); else it.push({ k: 't', s: '(' + s + ')' });
+        } else if (n.t === 'g') {
+          it.push({ k: 't', s: (n.name ? o.f(n.name) : '') + '(' + sr(n.a) + ')' });
+        } else {
+          const e = o.pow + wrap(sr(n.a));
+          if (!l || l.k === 'op') { it.push({ k: 't', s: '?' + e }); return }
+          const prev = it[it.length - 2];
+          if (l.pw) l.s = '(' + l.s + ')';
+          l.s += e; if (o.pow === '**' && prev && prev.k === 'op' && prev.s === '-') l.s = '(' + l.s + ')';
+          l.k = 't'; l.pw = true
+        }
+      });
+      let out = '';
+      it.forEach((x, k) => { const p = it[k - 1]; if (p && p.k !== 'op' && x.k !== 'op') out += '*'; out += x.s });
+      return out
+    }
+
+    /* ---------- input ---------- */
+    function press(key) {
+      if (/^[0-9.]$/.test(key)) ins({ t: 'c', v: key, c: key });
+      else if (/^[a-zA-Z]$/.test(key)) letter(key);
+      else if (OPS.includes(key)) ins({ t: 'c', v: key, c: key });
+      else if (key === '/') insFrac();
+      else if (key === '^') insPow();
+      else if (key === '(') insG('');
+      else if (key === ')') exitGroup();
+      else if (key === 'ArrowRight') right();
+      else if (key === 'ArrowLeft') left();
+      else if (key === 'Backspace') back();
+      else return false;
+      return true
+    }
+    ed.addEventListener('keydown', e => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (press(e.key)) { e.preventDefault(); render() }
+    });
+
+    const KEYS = [
+      ['sin', 'f', () => insG('sin')], ['cos', 'f', () => insG('cos')], ['tan', 'f', () => insG('tan')], ['ln', 'f', () => insG('ln')], ['log', 'f', () => insG('log')], ['exp', 'f', () => insG('exp')],
+      ['√', 'f', () => insG('sqrt')], ['xʸ', 'f', insPow], ['a/b', 'f', insFrac], ['( )', 'f', () => insG('')], ['|x|', 'f', () => insG('abs')], ['AC', 'a', clearAll],
+      ['7', , () => press('7')], ['8', , () => press('8')], ['9', , () => press('9')], ['+', 'o', () => press('+')], ['←', 'f', left], ['π', 'f', () => ins({ t: 'c', v: 'π', c: '#pi' })],
+      ['4', , () => press('4')], ['5', , () => press('5')], ['6', , () => press('6')], ['−', 'o', () => press('-')], ['→', 'f', right], ['e', 'f', () => ins({ t: 'c', v: 'e', c: '#e' })],
+      ['1', , () => press('1')], ['2', , () => press('2')], ['3', , () => press('3')], ['×', 'o', () => press('*')], ['⌫', 'a', back], ['x²', 'f', () => { const n = { t: 'p', a: chars('2') }; ins(n) }],
+      ['0', , () => press('0')], ['.', , () => press('.')], [',', 'o', () => press(',')], ['x', 'f', () => press('x')], ['y', 'f', () => press('y')], ['z', 'f', () => press('z')]
+    ];
+    const keysEl = document.getElementById('keys');
+    KEYS.forEach(([label, cls, fn]) => {
+      const b = mk('button', cls || '', label); b.type = 'button';
+      b.onmousedown = e => e.preventDefault();
+      b.onclick = () => { fn(); render(); ed.focus({ preventScroll: true }) };
+      keysEl.appendChild(b)
+    });
+
+    sel.onchange = render;
+    document.getElementById('ex').onclick = () => {
+      clearAll();
+      root.push({ t: 'f', a: [...chars('-b+'), { t: 'g', name: 'sqrt', a: [...chars('b'), { t: 'p', a: chars('2') }, ...chars('-4ac')] }], b: chars('2a') });
+      cur = { row: root, i: 1 }; render()
+    };
+    document.getElementById('cp').onclick = async e => {
+      const b = e.currentTarget;
+      try { await navigator.clipboard.writeText(codeEl.textContent); b.textContent = '已複製' }
+      catch (_) { const r = document.createRange(); r.selectNodeContents(codeEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = '請按 Ctrl+C' }
+      setTimeout(() => b.textContent = '複製', 1500)
+    };
+    render();
+  </script>
+</body>
+
+</html>
